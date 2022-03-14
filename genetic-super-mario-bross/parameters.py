@@ -13,11 +13,11 @@ class Params:
         self.network_architecture.append(self.num_classes)  # 7 Outputs ['v', '>', '<', '^', 'a', 'b', 'none']
         self.selection_type = 'tournament'
         self.tournament_size = 5
-        self.num_parents = 12
+        self.num_parents = 9
         self.number_layers = 3
         self.sbx_eta = 100
-        self.mutation_rate = 0.1 # Value must be between [0.00, 1.00)
-        self.gaussian_mutation_scale = 0.4 # The amount to multiple by the guassian(0, 1) value by
+        self.mutation_rate = 0.01 # Value must be between [0.00, 1.00)
+        self.gaussian_mutation_scale = 0.2 # The amount to multiple by the guassian(0, 1) value by
 
     def get_selection_type(self):
         return self.selection_type

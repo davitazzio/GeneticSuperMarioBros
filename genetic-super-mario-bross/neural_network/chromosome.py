@@ -6,26 +6,27 @@ from typing import List
 import numpy as np
 from game import Game
 from .my_nn import SuperMarioNeuralNetwork
-
+from parameters import Params
 
 class Chromosome:
-    def __init__(self, network_architecture: List[int], ch_name: str, init: bool = False):
+    def __init__(self, par: Params, ch_name: str, init: bool = False):
         """
 
         :param network_architecture: List[int]: dimension of each layer
         :param ch_name: name of the individual
         :param init: if True, initialize the individual to random values
         """
-        self.input_size = network_architecture[0]
-        self.hidden_layer_size = network_architecture[1]
-        self.output_size = network_architecture[2]
-        self.number_of_layers = len(network_architecture)
-        self.network_architecture = network_architecture
+        self.network_architecture = par.get_network_architecture()
+        self.input_size = self.network_architecture[0]
+        self.hidden_layer_size = self.network_architecture[1]
+        self.output_size = self.network_architecture[2]
+        self.number_of_layers = par.get_num_layers()
         self.fitness = 0
         self.weight = [0 for i in range(0, self.number_of_layers)]
         self.bias = [0 for i in range(0, self.number_of_layers)]
         self.queue = None
         self.name = ch_name
+        self.param = par
 
         if init:
             self.init_uniform()
@@ -154,7 +155,7 @@ class Chromosome:
         #print('chromosome ', self.name, ' started')
         nn = SuperMarioNeuralNetwork(self.input_size, self.hidden_layer_size, self.output_size)
         nn.set_params(self)
-        game = Game(nn, render)
+        game = Game(self.param, nn, render)
         self.fitness = game.start_game()
         self.queue.put(0)
         self.queue = None

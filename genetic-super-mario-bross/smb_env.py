@@ -590,7 +590,21 @@ class SuperMarioBrosEnv(NESEnv):
         return self._is_game_over
 
     def _get_info(self):
-        """Return the info after a step occurs"""
+        """Return the info after a step occurs
+        coins:	    int	The number of collected coins
+        flag_get:	bool	True if Mario reached a flag or ax
+        life:	    int	The number of lives left, i.e., {3, 2, 1}
+        score:	    int	The cumulative in-game score
+        stage:	    int	The current stage, i.e., {1, ..., 4}
+        status:	    str	Mario's status, i.e., {'small', 'tall', 'fireball'}
+        time:	    int	The time left on the clock
+        world:	    int	The current world, i.e., {1, ..., 8}
+        x_pos:	    int	Mario's x position in the stage (from the left)
+        y_pos:	    int	Mario's y position in the stage (from the bottom)
+        tiles:      RAM_locations
+        mario_location: (int, int)  mario locatio on the screen
+        is_dead:    bool: True if mario is dead
+        """
         return dict(
             coins=self._coins,
             flag_get=self._flag_get,

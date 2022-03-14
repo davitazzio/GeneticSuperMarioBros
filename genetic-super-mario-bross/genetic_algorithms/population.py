@@ -11,6 +11,7 @@ from genetic_algorithms.mutation import gaussian_mutation
 from genetic_algorithms.crossover import simulated_binary_crossover as SBX
 
 
+
 class Population(object):
     def __init__(self, params: Params, name: str, num_individuals: int = 10, init: bool = False,
                  chromosomes: List[Chromosome] = None):
@@ -68,7 +69,7 @@ class Population(object):
         self.generation = 0
         self.chromosomes = []
         for i in range(0, self.num_individuals):
-            c = Chromosome(self.parameters.get_network_architecture(), 'ch' + str(i), True)
+            c = Chromosome(self.parameters, 'ch' + str(i), True)
             self.chromosomes.append(c)
 
     def calc_stats(self):
@@ -87,7 +88,7 @@ class Population(object):
 
         return {'mean': mean, 'median': median, 'std': std, 'min': _min, 'max': _max}
 
-    def save_generation(self) -> None:
+    def save_generation(self, time_of_execution: float = None) -> None:
         """
         Save the actual chromosomes of the population at the current generation, with their stats
         :return: None
@@ -103,10 +104,12 @@ class Population(object):
         if not os.path.exists(population_folder):
             os.makedirs(population_folder)
 
-        print(self.calc_stats())
+        stats = self.calc_stats()
+        stats['execution_time'] = time_of_execution
+        print(stats)
 
         with open(os.path.join(population_folder, 'stat'), 'w') as json_file:
-            json.dump(self.calc_stats(), json_file)
+            json.dump(stats, json_file)
         json_file.close()
 
     def load_generation(self, generation: int) -> None:
@@ -122,7 +125,8 @@ class Population(object):
             except Exception:
                 continue
 
-        self.generation = generation + 1
+        self.generation = generation
+        self.evolve()
 
         #np.save(os.path.join(population_folder, 'stats'), self.calc_stats())
 
@@ -140,6 +144,8 @@ class Population(object):
         """
 
         self.chromosomes = elitism_selection(self, self.parameters.get_num_parents())
+        self.chromosomes.append(Chromosome(self.parameters, 'new1', True))
+        #self.chromosomes.append(Chromosome(self.parameters, 'new2', True))
         random.shuffle(self.chromosomes)
 
         while len(self.chromosomes) < self.num_individuals-2:
@@ -158,8 +164,8 @@ class Population(object):
 
             # Each W_l and b_l are treated as their own chromosome.
             # Because of this I need to perform crossover/mutation on each chromosome between parents
-            c1 = Chromosome(self.parameters.get_network_architecture(), 'mutated', False)
-            c2 = Chromosome(self.parameters.get_network_architecture(), 'mutated', False)
+            c1 = Chromosome(self.parameters, 'mutated', False)
+            c2 = Chromosome(self.parameters, 'mutated', False)
             for l in range(1, L):
                 p1_W_l = weights1[l]
                 p2_W_l = weights2[l]
@@ -180,8 +186,6 @@ class Population(object):
                 c2.set_bias(np.clip(c2_b_l, -1, 1), l)
             self.chromosomes.append(c1)
             self.chromosomes.append(c2)
-        self.chromosomes.append(Chromosome(self.parameters.get_network_architecture(), 'new1', True))
-        self.chromosomes.append(Chromosome(self.parameters.get_network_architecture(), 'new2', True))
 
         self.generation += 1
         random.shuffle(self.chromosomes)

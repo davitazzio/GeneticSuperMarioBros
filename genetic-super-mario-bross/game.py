@@ -4,10 +4,11 @@ from nes_py.wrappers import JoypadSpace
 from actions import SIMPLE_MOVEMENT
 from RAM_locations import EnemyType, StaticType, DynamicType
 from smb_env import SuperMarioBrosEnv
+from parameters import Params
 
 
 class Game:
-    def __init__(self, net: torch.nn.Sequential, render=False):
+    def __init__(self, par: Params, net: torch.nn.Sequential, render=False):
         self.done = None
         self.reward = None
         self.mario = None
@@ -22,6 +23,7 @@ class Game:
         self.score = 0
         self.render = render
         self.old_score = 0
+        self.params = par
 
     def start_game(self) -> float:
         stuck = 0
@@ -47,8 +49,9 @@ class Game:
                 stuck += 1
             else:
                 stuck = 0
-            if stuck == 500:
+            if stuck == 1000:
                 self.done = True
+                self.fitness -= 500
             last_pos = self.mario[1]
 
             if info['is_dead']:
@@ -65,9 +68,10 @@ class Game:
 
     def get_state(self):
         state = []
-        for i in range(0, 63):
-            col = (i % 7) + 7
-            row = int(i / 7) + 5
+        row_len = self.params.get_interest_area()[3] - self.params.get_interest_area()[2] + 1
+        for i in range(0, self.params.get_input_size()):
+            col = (i % row_len) + self.params.get_interest_area()[2]
+            row = int(i / row_len) + self.params.get_interest_area()[0]
             done = False
             try:
                 tile = self.tiles[(row, col)]

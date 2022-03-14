@@ -5,10 +5,12 @@ import threading
 from genetic_algorithms.population import Population
 from parameters import Params
 from queue import Queue
+import time
 from neural_network.chromosome import Chromosome
 
 
 def run_population(population: Population, param: Params):
+    start_time = time.time()
     q = Queue()
     for ch in population.get_chromosomes():
         ch.set_queue(q)
@@ -20,9 +22,8 @@ def run_population(population: Population, param: Params):
         # print('get ', i)
 
     print("finished")
-
-    population.calc_stats()
-    # ecc ecc
+    time_of_execution = time.time() - start_time
+    population.save_generation(time_of_execution)
 
 
 def next_generation(population: Population) -> None:
@@ -38,7 +39,6 @@ def next_generation(population: Population) -> None:
         pop_size = len(self.population.individuals)
         print(f'Wins: {num_wins}/{pop_size} (~{(float(num_wins) / pop_size * 100):.2f}%)')"""
 
-    population.save_generation()
     population.evolve()
 
 
@@ -48,21 +48,16 @@ def parse_args():
     # Config
     parser.add_argument('-c', '--config', dest='config', required=False, help='config file to use')
     # Load arguments
-    parser.add_argument('--load-file', dest='load_file', required=False,
-                        help='/path/to/population that you want to load individuals from')
-    parser.add_argument('--load-inds', dest='load_inds', required=False,
-                        help='[start,stop] (inclusive) or ind1,ind2,... that you wish to load from the file')
+    parser.add_argument('-i', '--init', dest='init', required=False,
+                        help='initialize the population')
+    parser.add_argument('--load_pop', dest='load_pop', required=False,
+                        help='population to load')
     # No display
-    parser.add_argument('--no-display', dest='no_display', required=False, default=False, action='store_true',
-                        help='If set, there will be no Qt graphics displayed and FPS is increased to max')
+    parser.add_argument('--render', dest='render', required=False, default=False, action='render')
     # Debug
     parser.add_argument('--debug', dest='debug', required=False, default=False, action='store_true',
                         help='If set, certain debug messages will be printed')
-    # Replay arguments
-    parser.add_argument('--replay-file', dest='replay_file', required=False, default=None,
-                        help='/path/to/population that you want to replay from')
-    parser.add_argument('--replay-inds', dest='replay_inds', required=False, default=None,
-                        help='[start,stop] (inclusive) or ind1,ind2,ind50,... or [start,] that you wish to replay from file')
+
 
     args = parser.parse_args()
 
@@ -127,13 +122,13 @@ if __name__ == "__main__":
     global args
     parameters = Params()
 
-    pop = Population(parameters, 'prova7', 40, True)
-    pop.load_generation(59)
+    pop = Population(parameters, 'prova7', 20, True)
+    pop.load_generation(136)
 
     for _ in range(0, 30):
         run_population(pop, parameters)
         next_generation(pop)
 
-    '''ch = Chromosome(parameters.network_architecture, 'ch10', True)
-    ch.load_chromosome(os.path.join('prova6', 'gen230'))
+    '''ch = Chromosome(parameters, 'ch9', True)
+    ch.load_chromosome(os.path.join('prova7', 'gen130'))
     ch.run_chromosome(True)'''
