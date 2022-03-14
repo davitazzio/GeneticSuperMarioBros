@@ -1,140 +1,127 @@
+import torch
+
 from nes_py.wrappers import JoypadSpace
-import gym
 from actions import SIMPLE_MOVEMENT
 from RAM_locations import EnemyType, StaticType, DynamicType
-import numpy as np
+from smb_env import SuperMarioBrosEnv
 
 
-class Round:
-
-    def __init__(self):
-        self.result = 0
-        self.info = None
+class Game:
+    def __init__(self, net: torch.nn.Sequential, render=False):
         self.done = None
         self.reward = None
         self.mario = None
         self.tiles = None
-        self.env = gym.make('SuperMarioBros-v0')
+        self.mario_status = 'small'
+        self.old_mario_status = 'small'
+        self.env = SuperMarioBrosEnv()
         self.env = JoypadSpace(self.env, SIMPLE_MOVEMENT)
-        self.parameters = []
         self.state = self.env.reset()
+        self.net = net
+        self.fitness = 0
+        self.score = 0
+        self.render = render
+        self.old_score = 0
 
-    def get_fitness(self):
-        return self.result
-
-    def get_parameters(self):
-        return self.parameters
-
-    def fintnes(self):
-        pass
-
-    def get_enemy_state(self):
-        enemy = []
-        for key in self.tiles.keys():
-            if 5 <= key[0] <= 13 and 7 <= key[1] <= 13:
-                if isinstance(self.tiles[key], EnemyType):
-                    enemy.append(1)
-                else:
-                    enemy.append(0)
-        while True:
-            if not len(enemy) == 63:
-                enemy.append(0)
-            else:
-                break
-        return enemy
-
-    def get_coin_state(self):
-        coins = []
-        for key in self.tiles.keys():
-            if 5 <= key[0] <= 13 and 7 <= key[1] <= 13:
-                if self.tiles[key] is StaticType.Coin \
-                        or self.tiles[key] is StaticType.Coin_Block1 \
-                        or self.tiles[key] is StaticType.Coin_Block2:
-                    coins.append(1)
-                else:
-                    coins.append(0)
-        while True:
-            if not len(coins) == 63:
-                coins.append(0)
-            else:
-                break
-        return coins
-
-    def get_environment(self):
-        environment = []
-        for key in self.tiles.keys():
-            if 5 <= key[0] <= 13 and 7 <= key[1] <= 13:
-                if self.tiles[key] is StaticType.Ground \
-                        or self.tiles[key] is StaticType.Top_Pipe2 \
-                        or self.tiles[key] is StaticType.Top_Pipe1 \
-                        or self.tiles[key] is StaticType.Bottom_Pipe1 \
-                        or self.tiles[key] is StaticType.Bottom_Pipe2 \
-                        or self.tiles[key] is StaticType.Breakable_Block \
-                        or self.tiles[key] is StaticType.Flagpole:
-                    environment.append(1)
-                else:
-                    environment.append(0)
-        while True:
-            if not len(environment) == 63:
-                environment.append(0)
-            else:
-                break
-        return environment
-
-    def get_power_up_state(self):
-        power_up = []
-        for key in self.tiles.keys():
-            if 5 <= key[0] <= 13 and 7 <= key[1] <= 13:
-                if self.tiles[key] is DynamicType.PowerUp:
-                    power_up.append(1)
-                else:
-                    power_up.append(0)
-        while True:
-            if not len(power_up) == 63:
-                power_up.append(0)
-            else:
-                break
-        return power_up
-
-    def get_step(self):
-        return None
-
-    def start_game(self, par, queue, render=False):
-        self.parameters = par
-        self.state, self.reward, self.done, self.info = self.env.step(1)
-        for step in range(1000000):
+    def start_game(self) -> float:
+        stuck = 0
+        last_pos = 0
+        self.state, self.reward, self.done, info = self.env.step(1)
+        for step in range(100000):
             if self.done:
                 break
                 self.state = self.env.reset()
 
-            self.mario = self.info['mario_location']
-            self.tiles = self.info['tiles']
+            self.mario = info['mario_location']
+            self.tiles = info['tiles']
+            self.old_mario_status = self.mario_status
+            self.mario_status = info['status']
+            self.old_score = self.score
+            self.score = info['score']
+
             s = self.get_step()
-            self.state, self.reward, self.done, self.info = self.env.step(s)
-            self.fintnes()
+            self.state, self.reward, self.done, info = self.env.step(s)
+            self.calculate_fitness()
 
             if last_pos == self.mario[1]:
-                fermo = fermo + 1
+                stuck += 1
             else:
-                fermo = 0
-            if fermo == 200:
+                stuck = 0
+            if stuck == 500:
                 self.done = True
             last_pos = self.mario[1]
 
-            if render:
+            if info['is_dead']:
+                self.done = True
+
+            if self.render:
                 self.env.render()
-
-        if queue is not None:
-            queue.put(self.get_fitness())
-            queue.task_done()
-        else:
-            print('Fitness score: ', self.get_fitness())
-
+        # print('Fitness score: ', self.get_fitness())
         self.env.close()
-        exit(0)
+        return self.get_fitness()
+
+    def get_fitness(self):
+        return self.fitness
+
+    def get_state(self):
+        state = []
+        for i in range(0, 63):
+            col = (i % 7) + 7
+            row = int(i / 7) + 5
+            done = False
+            try:
+                tile = self.tiles[(row, col)]
+            except KeyError:
+                state.append(0)
+                done = True
+                continue
+            if not done:
+                # ENEMY -1
+                if isinstance(tile, EnemyType):
+                    state.append(-1)
+                # GROUND -0.5
+                elif isinstance(tile, StaticType) and tile is not StaticType.Coin \
+                        and tile is not StaticType.Coin_Block1 \
+                        and tile is not StaticType.Coin_Block2:
+                    if tile is StaticType.Empty or tile is StaticType.Fake:
+                        state.append(0)
+                    else:
+                        state.append(-0.5)
+                # COIN 0.5
+                elif tile is StaticType.Coin \
+                        or tile is StaticType.Coin_Block1 \
+                        or tile is StaticType.Coin_Block2:
+                    state.append(0.5)
+                # POWER UP 1
+                elif tile is DynamicType.PowerUp:
+                    state.append(1)
+                else:
+                    state.append(0)
+
+        return state
+
+    def calculate_fitness(self):
+        self.fitness += self.reward
+        score_gained = self.score - self.old_score
+        self.fitness += score_gained
+        if self.mario_status == 'tall' and self.old_mario_status == 'small':
+            self.fitness += 1000
+            print('TALL')
+        if self.mario_status == 'fireball' and self.old_mario_status == 'tall':
+            self.fitness += 2000
+            print('FIREBALL')
+        if self.mario_status == 'tall' and self.old_mario_status == 'fireball':
+            self.fitness -= 2000
+        if self.mario_status == 'small' and self.old_mario_status == 'tall':
+            self.fitness -= 1000
+
+    def get_step(self):
+        return torch.argmax(self.net.forward(torch.tensor(self.get_state()))).item()
 
 
 if __name__ == "__main__":
-    parameters=[]
-    r = Round()
-    r.start_game(np.array_split(parameters, 4), None, True)
+    ''' p = utils.Utils()
+    p.init_network()
+
+    r = Game(p.network, True)
+    r.start_game()'''

@@ -1,76 +1,161 @@
+import os
 import numpy as np
 from typing import Tuple, Optional, Union, Set, Dict, Any, List
-import random
-import os
-import csv
-
-from genetic_algorithm.individual import Individual
-from genetic_algorithm.population import Population
-from neural_network import FeedForwardNetwork, linear, sigmoid, tanh, relu, leaky_relu, ActivationFunction, \
-    get_activation_by_name
-from utils import SMB, StaticTileType, EnemyType
-from config import Config
+from . import chromosome as ch
+from . import my_nn
 
 
-class Utils(Individual):
-    def __init__(self,
-                 chromosome: Optional[Dict[str, np.ndarray]] = None,
-                 hidden_layer_architecture: List[int] = [12, 9],
-                 hidden_activation: Optional[ActivationFunction] = 'relu',
-                 output_activation: Optional[ActivationFunction] = 'sigmoid',
-                 lifespan: Union[int, float] = np.inf,
-                 name: Optional[str] = None,
-                 debug: Optional[bool] = False,
-                 ):
+class Utils:
+    def __init__(self):
+        self.chromosome = None
+        self.network = None
+        self.network_architecture = None
+        self.inputs_as_array = None
+        self.interest_area = None
+        self.render = None
 
-        self.lifespan = lifespan
-        self.name = name
-        self.debug = debug
+    def init_network(self,
+                     chromosome: Optional[ch.Chromosome] = None,
+                     hidden_layer_architecture: int = 9,
+                     interest_area: List[int] = ([5, 13, 7, 13]),
+                     ):
 
-        self._fitness = 0  # Overall fitness
-        self._frames_since_progress = 0  # Number of frames since Mario has made progress towards the goal
-        self._frames = 0  # Number of frames Mario has been alive
 
-        self.hidden_layer_architecture = (9)
-        self.hidden_activation = 'relu'
-        self.output_activation = 'sigmoid'
+        self.interest_area = interest_area
 
-        self.start_row, self.viz_width, self.viz_height = (4, 7, 10)
-
-        if self.config.NeuralNetwork.encode_row:
-            num_inputs = self.viz_width * self.viz_height + self.viz_height
-        else:
-            num_inputs = self.viz_width * self.viz_height
-        # print(f'num inputs:{num_inputs}')
+        # STRUTTURA DELLA RETE
+        num_inputs = (self.interest_area[1] - self.interest_area[0] + 1) * (
+                self.interest_area[3] - self.interest_area[2] + 1)
 
         self.inputs_as_array = np.zeros((num_inputs, 1))
         self.network_architecture = [num_inputs]  # Input Nodes
-        self.network_architecture.extend(self.hidden_layer_architecture)  # Hidden Layer Ndoes
-        self.network_architecture.append(7)  # 6 Outputs ['u', 'd', 'l', 'r', 'a', 'b', 'none]
+        self.network_architecture.append(hidden_layer_architecture)  # number of hidden layer nodes
+        self.network_architecture.append(7)  # 7 Outputs ['v', '>', '<', '^', 'a', 'b', 'none']
 
-        self.network = FeedForwardNetwork(self.network_architecture,
-                                          get_activation_by_name(self.hidden_activation),
-                                          get_activation_by_name(self.output_activation)
-                                          )
+        self.network = my_nn.SuperMarioNeuralNetwork(num_inputs, hidden_layer_architecture, 7)
 
         # If chromosome is set, take it
         if chromosome:
-            self.network.params = chromosome
+            self.chromosome = chromosome
+        else:
+            self.chromosome = ch.Chromosome(self.network_architecture, True)
 
-        self.is_alive = True
-        self.x_dist = None
-        self.game_score = None
-        self.did_win = False
-        # This is mainly just to "see" Mario winning
-        self.allow_additional_time = self.config.Misc.allow_additional_time_for_flagpole
-        self.additional_timesteps = 0
-        self.max_additional_timesteps = int(60 * 2.5)
-        self._printed = False
+    def save_network(self, population_folder: str, round_name: str):
+        self.chromosome.save_chromosome(population_folder, round_name)
 
-        # Keys correspond with             B, NULL, SELECT, START, U, D, L, R, A
-        # index                            0  1     2       3      4  5  6  7  8
-        self.buttons_to_press = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0], np.int8)
-        self.farthest_x = 0
+    def load_network(self, population_folder: str, round_name: str):
+        self.chromosome.load_chromosome(population_folder, round_name)
+
+    def get_network(self):
+        return self.network
+
+
+'''        
+        
+        
+        
+
+    def _calc_stats(data: List[Union[int, float]]) -> Tuple[float, float, float, float, float]:
+        mean = np.mean(data)
+        median = np.median(data)
+        std = np.std(data)
+        _min = float(min(data))
+        _max = float(max(data))
+
+        return (mean, median, std, _min, _max)
+
+    def save_stats(population: Population, fname: str):
+        directory = os.path.dirname(fname)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        f = fname
+
+        frames = [individual._frames for individual in population.individuals]
+        max_distance = [individual.farthest_x for individual in population.individuals]
+        fitness = [individual.fitness for individual in population.individuals]
+        wins = [sum([individual.did_win for individual in population.individuals])]
+
+        write_header = True
+        if os.path.exists(f):
+            write_header = False
+
+        trackers = [('frames', frames),
+                    ('distance', max_distance),
+                    ('fitness', fitness),
+                    ('wins', wins)
+                    ]
+
+        stats = ['mean', 'median', 'std', 'min', 'max']
+
+        header = [t[0] + '_' + s for t in trackers for s in stats]
+
+        with open(f, 'a') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=header, delimiter=',')
+            if write_header:
+                writer.writeheader()
+
+            row = {}
+            # Create a row to insert into csv
+            for tracker_name, tracker_object in trackers:
+                curr_stats = _calc_stats(tracker_object)
+                for curr_stat, stat_name in zip(curr_stats, stats):
+                    entry_name = '{}_{}'.format(tracker_name, stat_name)
+                    row[entry_name] = curr_stat
+
+            # Write row
+            writer.writerow(row)
+
+    def load_stats(path_to_stats: str, normalize: Optional[bool] = False):
+        data = {}
+
+        fieldnames = None
+        trackers_stats = None
+        trackers = None
+        stats_names = None
+
+        with open(path_to_stats, 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            fieldnames = reader.fieldnames
+            trackers_stats = [f.split('_') for f in fieldnames]
+            trackers = set(ts[0] for ts in trackers_stats)
+            stats_names = set(ts[1] for ts in trackers_stats)
+
+            for tracker, stat_name in trackers_stats:
+                if tracker not in data:
+                    data[tracker] = {}
+
+                if stat_name not in data[tracker]:
+                    data[tracker][stat_name] = []
+
+            for line in reader:
+                for tracker in trackers:
+                    for stat_name in stats_names:
+                        value = float(line['{}_{}'.format(tracker, stat_name)])
+                        data[tracker][stat_name].append(value)
+
+        if normalize:
+            factors = {}
+            for tracker in trackers:
+                factors[tracker] = {}
+                for stat_name in stats_names:
+                    factors[tracker][stat_name] = 1.0
+
+            for tracker in trackers:
+                for stat_name in stats_names:
+                    max_val = max([abs(d) for d in data[tracker][stat_name]])
+                    if max_val == 0:
+                        max_val = 1
+                    factors[tracker][stat_name] = float(max_val)
+
+            for tracker in trackers:
+                for stat_name in stats_names:
+                    factor = factors[tracker][stat_name]
+                    d = data[tracker][stat_name]
+                    data[tracker][stat_name] = [val / factor for val in d]
+
+        return data
 
     @property
     def fitness(self):
@@ -91,7 +176,7 @@ class Utils(Individual):
         distance = self.x_dist
         score = self.game_score
 
-        self._fitness = max(distance ** 1.8 - frames ** 1.5 + min(max(distance-50, 0), 1) * 2500 +
+        self._fitness = max(distance ** 1.8 - frames ** 1.5 + min(max(distance - 50, 0), 1) * 2500 +
                             self.did_win * 1e6, 0.00001)
 
     def set_input_as_array(self, ram, tiles) -> None:
@@ -116,7 +201,7 @@ class Utils(Individual):
                     arr.append(0)  # Empty
 
         self.inputs_as_array[:self.viz_height * self.viz_width, :] = np.array(arr).reshape((-1, 1))
-        if self.config.NeuralNetwork.encode_row:    #True
+        if self.config.NeuralNetwork.encode_row:  # True
             # Assign one-hot for mario row
             row = mario_row - self.start_row
             one_hot = np.zeros((self.viz_height, 1))
@@ -134,11 +219,11 @@ class Utils(Individual):
         """
         if self.is_alive:
             self._frames += 1
-            self.x_dist = SMB.get_mario_location_in_level(ram).x###
-            self.game_score = SMB.get_mario_score(ram) ###
+            self.x_dist = SMB.get_mario_location_in_level(ram).x  ###
+            self.game_score = SMB.get_mario_score(ram)  ###
             # Sliding down flag pole
             if ram[0x001D] == 3:
-                self.did_win = True ####
+                self.did_win = True  ####
                 if not self._printed and self.debug:
                     name = 'Mario '
                     name += f'{self.name}' if self.name else ''
@@ -185,7 +270,7 @@ class Utils(Individual):
         return True
 
 
-def save_mario(population_folder: str, individual_name: str, mario: Mario) -> None:
+def save_mario(population_folder: str, individual_name: str, mario: Utils) -> None:
     # Make population folder if it doesnt exist
     if not os.path.exists(population_folder):
         os.makedirs(population_folder)
@@ -364,3 +449,4 @@ def get_num_trainable_parameters(config: Config) -> int:
         num_params += L * L_next + L_next
 
     return num_params
+'''

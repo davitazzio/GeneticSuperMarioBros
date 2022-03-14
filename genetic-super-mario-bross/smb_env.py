@@ -4,8 +4,8 @@ from enum import Enum, unique
 from RAM_locations import StaticType, DynamicType, EnemyType, RAMLocations
 from nes_py import NESEnv
 import numpy as np
-from ._roms import decode_target
-from ._roms import rom_path
+from _roms.decode_target import decode_target
+from _roms.rom_path import rom_path
 
 # create a dictionary mapping value of status register to string names
 _STATUS_MAP = defaultdict(lambda: 'fireball', {0: 'small', 1: 'tall'})
@@ -116,17 +116,17 @@ class SuperMarioBrosEnv(NESEnv):
         enemies = []
 
         for enemy_num in range(self.MAX_NUM_ENEMIES):
-            enemy = ram[self.RAMLocations.Enemy_Drawn.value + enemy_num]
+            enemy = self.ram[RAMLocations.Enemy_Drawn.value + enemy_num]
             # Is there an enemy? 1/0
             if enemy:
                 # Get the enemy X location.
-                x_pos_level = self.ram[self.RAMLocations.Enemy_X_Position_In_Level.value + enemy_num]
-                x_pos_screen = self.ram[self.RAMLocations.Enemy_X_Position_On_Screen.value + enemy_num]
+                x_pos_level = self.ram[RAMLocations.Enemy_X_Position_In_Level.value + enemy_num]
+                x_pos_screen = self.ram[RAMLocations.Enemy_X_Position_On_Screen.value + enemy_num]
                 enemy_loc_x = (x_pos_level * 0x100) + x_pos_screen  # - ram[0x71c]
                 # print(ram[0x71c])
                 # enemy_loc_x = ram[self.RAMLocations.Enemy_X_Position_Screen_Offset.value + enemy_num]
                 # Get the enemy Y location.
-                enemy_loc_y = self.ram[self.RAMLocations.Enemy_Y_Position_On_Screen.value + enemy_num]
+                enemy_loc_y = self.ram[RAMLocations.Enemy_Y_Position_On_Screen.value + enemy_num]
                 # Set location
                 location = Point(enemy_loc_x, enemy_loc_y)
                 ybin = np.digitize(enemy_loc_y, self.ybins)
@@ -134,7 +134,7 @@ class SuperMarioBrosEnv(NESEnv):
                 tile_location = Point(xbin, ybin)
 
                 # Grab the id
-                enemy_id = self.ram[self.RAMLocations.Enemy_Type.value + enemy_num]
+                enemy_id = self.ram[RAMLocations.Enemy_Type.value + enemy_num]
                 # Create enemy-
                 e = Enemy(enemy_id, location, tile_location)
 
@@ -143,9 +143,9 @@ class SuperMarioBrosEnv(NESEnv):
         return enemies
 
     def get_mario_location_in_level(self) -> Point:
-        mario_x = self.ram[self.RAMLocations.Player_X_Postion_In_Level.value] * 256 + self.ram[
-            self.RAMLocations.Player_X_Position_On_Screen.value]
-        mario_y = self.ram[self.RAMLocations.Player_Y_Position_Screen_Offset.value]
+        mario_x = self.ram[RAMLocations.Player_X_Postion_In_Level.value] * 256 + self.ram[
+            RAMLocations.Player_X_Position_On_Screen.value]
+        mario_y = self.ram[RAMLocations.Player_Y_Position_Screen_Offset.value]
         return Point(mario_x, mario_y)
 
     def get_mario_score(self) -> int:
@@ -158,9 +158,9 @@ class SuperMarioBrosEnv(NESEnv):
         return score
 
     def get_mario_location_on_screen(self):
-        mario_x = self.ram[self.RAMLocations.Player_X_Position_Screen_Offset.value]
-        mario_y = self.ram[self.RAMLocations.Player_Y_Pos_On_Screen.value] * self.ram[
-            self.RAMLocations.Player_Vertical_Screen_Position.value] + self.sprite.height
+        mario_x = self.ram[RAMLocations.Player_X_Position_Screen_Offset.value]
+        mario_y = self.ram[RAMLocations.Player_Y_Pos_On_Screen.value] * self.ram[
+            RAMLocations.Player_Vertical_Screen_Position.value] + self.sprite.height
         return Point(mario_x, mario_y)
 
     def get_tile_type(self, delta_x: int, delta_y: int, mario: Point):
@@ -199,7 +199,7 @@ class SuperMarioBrosEnv(NESEnv):
         mx, my = self.get_mario_location_in_level()
         my += 16
         # Set mx to be within the screen offset
-        mx = self.ram[self.RAMLocations.Player_X_Position_Screen_Offset.value]
+        mx = self.ram[RAMLocations.Player_X_Position_Screen_Offset.value]
 
         for y_pos in range(y_start, 240, 16):
             for x_pos in range(x_start, x_start + 256, 16):
@@ -245,7 +245,7 @@ class SuperMarioBrosEnv(NESEnv):
     def get_mario_row_col(self):
         x, y = self.get_mario_location_on_screen()
         # Adjust 16 for PPU
-        y = self.ram[self.RAMLocations.Player_Y_Position_Screen_Offset.value] + 16
+        y = self.ram[RAMLocations.Player_Y_Position_Screen_Offset.value] + 16
         x += 12
         col = x // 16
         row = (y - 0) // 16
@@ -603,7 +603,8 @@ class SuperMarioBrosEnv(NESEnv):
             x_pos=self._x_position,
             y_pos=self._y_position,
             tiles=self.get_tiles,
-            mario_location=self.get_mario_row_col()
+            mario_location=self.get_mario_row_col(),
+            is_dead=self._is_dying
         )
 
 

@@ -1,7 +1,5 @@
- 
 from abc import abstractmethod
-from typing import Optional, Union
-import numpy as np
+
 
 class Individual(object):
     def __init__(self):
