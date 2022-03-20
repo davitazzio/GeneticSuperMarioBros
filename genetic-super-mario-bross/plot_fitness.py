@@ -12,6 +12,7 @@ def load_stats(pop_name: str):
     _min = []
     _max = []
     stats = {}
+    _time = []
     generations = []
 
     for files in os.listdir(pop_name):
@@ -30,11 +31,12 @@ def load_stats(pop_name: str):
                 generations.append(int(extension[1]))
 
     for i in range(np.min(generations), np.max(generations)):
-        mean.append(stats.get(i)[0])
-        median.append(stats.get(i)[1])
-        std.append(stats.get(i)[2])
-        _min.append(stats.get(i)[3])
-        _max.append(stats.get(i)[4])
+        if stats.get(i) is not None:
+            mean.append(stats.get(i)[0])
+            median.append(stats.get(i)[1])
+            std.append(stats.get(i)[2])
+            _min.append(stats.get(i)[3])
+            _max.append(stats.get(i)[4])
 
     plt.subplot(211)
     plt.plot([i for i in range(len(mean))], mean)
@@ -43,8 +45,8 @@ def load_stats(pop_name: str):
     plt.xlabel("Generation #")
 
     plt.subplot(212)
-    plt.plot([i for i in range(len(median))], median)
-    plt.plot([i for i in range(len(std))], std)
+    plt.plot([i for i in range(len(_time))], _time)
+    #plt.plot([i for i in range(len(std))], std)
 
     plt.show()
 
@@ -71,7 +73,7 @@ def find_best_chromosome(pop_name: str, generation: int):
 
 
 load_stats('prova7')
-#find_best_chromosome('prova6', 316)
+#find_best_chromosome('prova7', 129)
 '''extension = fname.rsplit('.npy', 1)
         if len(extension) == 2:
             param = extension[0]
