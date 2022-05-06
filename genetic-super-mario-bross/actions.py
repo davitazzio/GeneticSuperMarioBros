@@ -10,6 +10,19 @@ RIGHT_ONLY = [
     ['right', 'A', 'B'],
 ]
 
+ALL_COMBINATION = [
+    ['right'],
+    ['left'],
+    ['A'],
+    ['B'],
+    ['right', 'A'],
+    ['left', 'A'],
+    ['right', 'B'],
+    ['left', 'B'],
+    ['right', 'A', 'B'],
+
+]
+
 
 # actions for very simple movement
 SIMPLE_MOVEMENT = [
@@ -20,6 +33,16 @@ SIMPLE_MOVEMENT = [
     ['right', 'A', 'B'],
     ['A'],
     ['left'],
+]
+
+JOYPAD = [
+    ['up'],
+    ['down'],
+    ['left'],
+    ['right'],
+    ['A'],
+    ['B'],
+    ['NOOP']
 ]
 
 

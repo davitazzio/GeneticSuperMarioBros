@@ -4,18 +4,20 @@ from queue import Queue
 from typing import List
 
 import numpy as np
-from game import Game
+from game3 import Game
 from .my_nn import SuperMarioNeuralNetwork
 
 
 class Chromosome:
-    def __init__(self, network_architecture: List[int], ch_name: str, init: bool = False):
+    def __init__(self, par, ch_name: str, init: bool = False):
         """
 
         :param network_architecture: List[int]: dimension of each layer
         :param ch_name: name of the individual
         :param init: if True, initialize the individual to random values
         """
+        self.parameters = par
+        network_architecture = self.parameters.get_network_architecture()
         self.input_size = network_architecture[0]
         self.hidden_layer_size = network_architecture[1]
         self.output_size = network_architecture[2]
@@ -26,9 +28,30 @@ class Chromosome:
         self.bias = [0 for i in range(0, self.number_of_layers)]
         self.queue = None
         self.name = ch_name
+        self.runned = False
+        self.best_pos = 0
+        self.score = 0
+        self.best_status = 'small'
+        self.reward = 0
 
         if init:
             self.init_uniform()
+
+    def decrease_reward(self):
+        if self.reward > 0:
+            self.reward -= 1
+
+    def set_reward(self, reward):
+        self.reward == reward
+
+    def get_best_status(self):
+        return self.best_status
+
+    def get_best_pos(self):
+        return self.best_pos
+
+    def get_score(self):
+        return self.score
 
     def init_uniform(self) -> None:
         """
@@ -107,9 +130,16 @@ class Chromosome:
         if not os.path.exists(population_folder):
             os.makedirs(population_folder)
 
-        ch_info = {'w1': self.weight[1].tolist(), 'w2': self.weight[2].tolist(), 'b1': self.bias[1].tolist(),
-                   'b2': self.bias[2].tolist(),
-                   'fitness': float(self.fitness)}
+        ch_info = {
+            'w1': self.weight[1].tolist(),
+            'w2': self.weight[2].tolist(),
+            'b1': self.bias[1].tolist(),
+            'b2': self.bias[2].tolist(),
+            'fitness': float(self.fitness),
+            'best_pos': float(self.best_pos),
+            'best_status': self.best_status,
+            'score': float(self.score)
+        }
 
         with open(os.path.join(population_folder, round_name), 'w') as json_file:
             json.dump(ch_info, json_file)
@@ -141,6 +171,10 @@ class Chromosome:
             self.bias[1] = np.array(data['b1'])
             self.bias[2] = np.array(data['b2'])
             self.fitness = data['fitness']
+            self.best_status = data['best_status']
+            self.best_pos = data['best_pos']
+            self.score = data['score']
+        self.runned = False
 
     def get_fitness(self):
         return self.fitness
@@ -151,11 +185,13 @@ class Chromosome:
         :param render: bool: render the game
         :return: None
         """
-        #print('chromosome ', self.name, ' started')
-        nn = SuperMarioNeuralNetwork(self.input_size, self.hidden_layer_size, self.output_size)
-        nn.set_params(self)
-        game = Game(nn, render)
-        self.fitness = game.start_game()
+        print('chromosome ', self.name, ' started')
+        if not self.runned:
+            nn = SuperMarioNeuralNetwork(self.input_size, self.hidden_layer_size, self.output_size)
+            nn.set_params(self)
+            game = Game(self.parameters, nn, render)
+            self.fitness, self.best_pos, self.best_status, self.score = game.start_game()
+        self.runned = True
         self.queue.put(0)
         self.queue = None
 

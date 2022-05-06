@@ -11,7 +11,6 @@ from genetic_algorithms.mutation import gaussian_mutation
 from genetic_algorithms.crossover import simulated_binary_crossover as SBX
 
 
-
 class Population(object):
     def __init__(self, params: Params, name: str, num_individuals: int = 10, init: bool = False,
                  chromosomes: List[Chromosome] = None):
@@ -23,6 +22,10 @@ class Population(object):
         :param init: bool: initialize randomly the population
         :param chromosomes: List[Chromosome]: initialize the population ith given individuals
         """
+        self.best_pos = []
+        self.scores = []
+        self.tall = 0
+        self.fireball = 0
         self.num_individuals = num_individuals
         self.chromosomes = chromosomes
         self.parameters = params
@@ -31,7 +34,7 @@ class Population(object):
         if init:
             self.init_uniform()
 
-    def get_num_individuals(self) ->int:
+    def get_num_individuals(self) -> int:
         """
         gets the number of individuals in the population
         :return: int: number of individuals
@@ -88,6 +91,43 @@ class Population(object):
 
         return {'mean': mean, 'median': median, 'std': std, 'min': _min, 'max': _max}
 
+    def generation_statistics(self):
+        self.best_pos = []
+        self.scores = []
+        self.tall = 0
+        self.fireball = 0
+        for ch in self.chromosomes:
+            self.best_pos.append(ch.get_best_pos())
+            self.scores.append(ch.get_score())
+            if ch.get_best_status() == 'fireball':
+                self.tall += 1
+                self.fireball += 1
+            elif ch.get_best_status() == 'tall':
+                self.tall += 1
+
+    def reward(self):
+        best_position_reached = 0
+        ch_rewarded = None
+        if len(self.best_pos) > 0:
+            for ch in self.chromosomes:
+                if ch.get_best_pos() > best_position_reached:
+                    best_position_reached = ch.get_best_pos()
+                    ch_rewarded = ch
+            if best_position_reached > max(self.best_pos):
+                ch_rewarded.set_reward(10)
+                print('position increased')
+            if self.tall < 4:
+                for ch in self.chromosomes:
+                    if ch.get_best_status == 'tall':
+                        ch.set_reward(10)
+                        break
+            if self.fireball < 4:
+                for ch in self.chromosomes:
+                    if ch.get_best_status == 'fireball':
+                        ch.set_reward(13)
+                        break
+
+
     def save_generation(self, time_of_execution: float = None) -> None:
         """
         Save the actual chromosomes of the population at the current generation, with their stats
@@ -112,9 +152,10 @@ class Population(object):
             json.dump(stats, json_file)
         json_file.close()
 
-    def load_generation(self, generation: int) -> None:
+    def load_generation(self, generation: int, evolve: bool = True) -> None:
         """
         Load an old version of the population with the same name
+        :param evolve:
         :param generation: int
         :return: none
         """
@@ -126,9 +167,10 @@ class Population(object):
                 continue
 
         self.generation = generation
-        self.evolve()
+        if evolve:
+            self.evolve()
 
-        #np.save(os.path.join(population_folder, 'stats'), self.calc_stats())
+        # np.save(os.path.join(population_folder, 'stats'), self.calc_stats())
 
     def load_stats(self, path_to_stats: str):
         pass
@@ -142,13 +184,21 @@ class Population(object):
             --the worst individual are replaced with the heirs
         :return: None
         """
-
+        self.reward()
+        reward = []
+        for ch in self.chromosomes:
+            if ch.reward > 0:
+                reward.append(ch)
+        self.generation_statistics()
         self.chromosomes = elitism_selection(self, self.parameters.get_num_parents())
-        self.chromosomes.append(Chromosome(self.parameters, 'new1', True))
-        #self.chromosomes.append(Chromosome(self.parameters, 'new2', True))
+        self.chromosomes.append(Chromosome(self.parameters, 'new', True))
+        if len(reward) > 0:
+            for ch in reward:
+                if ch not in self.chromosomes:
+                    self.chromosomes.append(ch)
         random.shuffle(self.chromosomes)
 
-        while len(self.chromosomes) < self.num_individuals-2:
+        while len(self.chromosomes) < self.num_individuals:
             if self.parameters.get_selection_type() == 'tournament':
                 p1, p2 = tournament_selection(self, 2, self.parameters.get_tournament_size())
             elif self.parameters.get_selection_type() == 'roulette':
@@ -190,28 +240,9 @@ class Population(object):
         self.generation += 1
         random.shuffle(self.chromosomes)
         self._rename_chromosomes()
+        for ch in self.chromosomes:
+            ch.decrease_reward()
         print("population evolved to genertion ", self.generation)
-
-
-
-'''
-            # Set debug if needed
-            if args.debug:
-                c1_name = f'm{num_loaded}_new'
-                c1.name = c1_name
-                c1.debug = True
-                num_loaded += 1
-
-                c2_name = f'm{num_loaded}_new'
-                c2.name = c2_name
-                c2.debug = True
-                num_loaded += 1'''
-'''
-            next_pop.extend([c1, c2])
-
-        # Set next generation
-        random.shuffle(next_pop)
-        self.population.individuals = next_pop'''
 
 
 def _crossover(par: Params, parent1_weights: np.ndarray, parent2_weights: np.ndarray,

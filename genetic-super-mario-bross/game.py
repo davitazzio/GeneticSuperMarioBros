@@ -85,16 +85,14 @@ class Game:
                     state.append(-1)
                 # GROUND -0.5
                 elif isinstance(tile, StaticType) and tile is not StaticType.Coin \
-                        and tile is not StaticType.Coin_Block1 \
-                        and tile is not StaticType.Coin_Block2:
+                        and tile is not StaticType.Coin_Block1:
                     if tile is StaticType.Empty or tile is StaticType.Fake:
                         state.append(0)
                     else:
                         state.append(-0.5)
                 # COIN 0.5
                 elif tile is StaticType.Coin \
-                        or tile is StaticType.Coin_Block1 \
-                        or tile is StaticType.Coin_Block2:
+                        or tile is StaticType.Coin_Block1:
                     state.append(0.5)
                 # POWER UP 1
                 elif tile is DynamicType.PowerUp:

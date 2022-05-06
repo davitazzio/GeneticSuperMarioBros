@@ -27,7 +27,7 @@ def load_stats(pop_name: str):
                 print('Error to load')
                 data = None
             if data is not None:
-                stats[int(extension[1])] = [data['mean'], data['median'], data['std'], data['min'], data['max']]
+                stats[int(extension[1])] = [data['mean'], data['median'], data['std'], data['min'], data['max'], data['execution_time']]
                 generations.append(int(extension[1]))
 
     for i in range(np.min(generations), np.max(generations)):
@@ -37,6 +37,7 @@ def load_stats(pop_name: str):
             std.append(stats.get(i)[2])
             _min.append(stats.get(i)[3])
             _max.append(stats.get(i)[4])
+            _time.append(stats.get(i)[5])
 
     plt.subplot(211)
     plt.plot([i for i in range(len(mean))], mean)
@@ -72,8 +73,9 @@ def find_best_chromosome(pop_name: str, generation: int):
     return 0  # np.amax(fitness)
 
 
-load_stats('prova7')
-#find_best_chromosome('prova7', 129)
+load_stats('prova1')
+#find_best_chromosome('prova1', 144)
+#TODO sistemare queste funzioni
 '''extension = fname.rsplit('.npy', 1)
         if len(extension) == 2:
             param = extension[0]

@@ -122,10 +122,10 @@ if __name__ == "__main__":
     global args
     parameters = Params()
 
-    pop = Population(parameters, 'prova7', 20, True)
-    pop.load_generation(136)
+    pop = Population(parameters, 'prova1', 25, True)
+    pop.load_generation(1495)
 
-    for _ in range(0, 30):
+    for _ in range(0, 1000):
         run_population(pop, parameters)
         next_generation(pop)
 

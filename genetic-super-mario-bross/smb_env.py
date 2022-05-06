@@ -3,6 +3,7 @@ from collections import defaultdict, namedtuple
 from enum import Enum, unique
 from RAM_locations import StaticType, DynamicType, EnemyType, RAMLocations
 from nes_py import NESEnv
+
 import numpy as np
 from _roms.decode_target import decode_target
 from _roms.rom_path import rom_path
@@ -142,6 +143,23 @@ class SuperMarioBrosEnv(NESEnv):
 
         return enemies
 
+    def get_powerup_locations(self):
+        tile_location = None
+        powerup = self.ram[RAMLocations.Powerup_Drawn.value]
+        # Is there an enemy? 1/0
+        if powerup:
+            # Get the enemy X location.
+            x_pos_screen = self.ram[RAMLocations.Powerup_X_Position_On_Screen.value]
+            y_pos_screen = self.ram[RAMLocations.Powerup_Y_Position_On_Screen.value]
+            #print(x_pos_screen, ',', y_pos_screen)
+
+            ybin = np.digitize(y_pos_screen, self.ybins)
+            xbin = np.digitize(x_pos_screen, self.xbins)
+            #print(xbin, ',', ybin)
+            tile_location = Point(xbin, ybin)
+
+        return tile_location
+
     def get_mario_location_in_level(self) -> Point:
         mario_x = self.ram[RAMLocations.Player_X_Postion_In_Level.value] * 256 + self.ram[
             RAMLocations.Player_X_Position_On_Screen.value]
@@ -188,6 +206,8 @@ class SuperMarioBrosEnv(NESEnv):
         tiles = {}
         row = 0
         col = 0
+        self.get_powerup_locations()
+        #print(self.ram)
 
         mario_level = self.get_mario_location_in_level()
         mario_screen = self.get_mario_location_on_screen()
@@ -210,31 +230,38 @@ class SuperMarioBrosEnv(NESEnv):
                 sub_x = (x % 256) // 16
                 sub_y = (y - 32) // 16
                 addr = 0x500 + page * 208 + sub_y * 16 + sub_x
-
+                done = False
                 # PPU is there, so no tile is there
                 if row < 2:
                     tiles[loc] = StaticType.Empty
+                elif StaticType.has_value(tile):
+                    tiles[loc] = StaticType(tile)
+                        #print(tile, '=', tiles[loc])
                 else:
-                    try:
-                        tiles[loc] = StaticType(tile)
-                    except:
-                        pass
-                    try:
+                    tiles[loc] = StaticType.Ground
+                    print(tile, '=', loc)
+                    #TODO check what happen with dynamic tiles
+                    '''try:
                         tiles[loc] = DynamicType(tile)
+                        #print(tile, '=', tiles[loc])
                     except:
-                        pass
-                    for enemy in enemies:
-                        ex = enemy.location.x
-                        ey = enemy.location.y + 8
-                        # Since we can only discriminate within 8 pixels, if it falls within this bound, count it as there
-                        if abs(x_pos - ex) <= 8 and abs(y_pos - ey) <= 8:
-                            tiles[loc] = enemy.type
+                        pass'''
+                for enemy in enemies:
+                    ex = enemy.location.x
+                    ey = enemy.location.y + 8
+                    # Since we can only discriminate within 8 pixels, if it falls within this bound, count it as there
+                    if abs(x_pos - ex) <= 8 and abs(y_pos - ey) <= 8:
+                        tiles[loc] = enemy.type
+                            #print(enemy.location, '=', tiles[loc])
                 # Next col
                 col += 1
             # Move to next row
             col = 0
             row += 1
-
+        # Place marker for powerup
+        powerup = self.get_powerup_locations()
+        if powerup is not None:
+            tiles[powerup] = StaticType.PowerUp
         # Place marker for mario
         mario_row, mario_col = self.get_mario_row_col()
         loc = (mario_row, mario_col)
