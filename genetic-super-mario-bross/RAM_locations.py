@@ -1,5 +1,8 @@
+"""
+    @chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+"""
 from enum import Enum, unique
-
 
 @unique
 class RAMLocations(Enum):
@@ -48,14 +51,11 @@ class EnemyType(Enum):
     Spiny_Egg = 0x12
     Fly_Cheep_Cheep = 0x14
     Bowser_Flame2 = 0x15
-
-
     # Generic_Enemy = 0xFF
 
     @classmethod
     def has_value(cls, value: int) -> bool:
         return value in set(item.value for item in cls)
-
 
 @unique
 class StaticType(Enum):
@@ -82,18 +82,15 @@ class StaticType(Enum):
     Hidden_Powerup = 0x57
     PowerUp = -1
     Static_Block = 0x61
-
     # Generic_Static_Tile = 0xFF
 
     @classmethod
     def has_value(cls, value: int) -> bool:
         return value in set(item.value for item in cls)
 
-
 @unique
 class DynamicType(Enum):
     Mario = 0xAA
-
     Static_Lift1 = 0x24
     Static_Lift2 = 0x25
     Vertical_Lift1 = 0x26
@@ -111,7 +108,6 @@ class DynamicType(Enum):
     Spring1 = 0x67
     Spring2 = 0x68
     PowerUp = 0x7E020C #0x0039
-
     # Generic_Dynamic_Tile = 0xFF
 
     @classmethod
