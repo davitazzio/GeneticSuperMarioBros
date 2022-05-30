@@ -1,3 +1,7 @@
+'''
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+'''
+
 import json
 import os
 
@@ -5,8 +9,14 @@ from parameters import Params
 from neural_network.chromosome import Chromosome
 
 
-def find_best_chromosome(pop_name: str, generation: int):
-    for files in os.listdir(pop_name):
+def find_best_chromosome(population_name: str, generation: int):
+    """
+    find the best chromosome in a generation.
+    :param population_name: str: name of the population
+    :param generation: int:
+    :return: None
+    """
+    for files in os.listdir(population_name):
         extension = files.rsplit('gen', 1)
         if extension[0] == '' and int(extension[1]) == generation:
             f = files
@@ -28,14 +38,13 @@ def find_best_chromosome(pop_name: str, generation: int):
     return list(sorted_fitness.keys())[0]
 
 
-parameters = Params()
-generation = 1339
-pop_name = 'prova1'
-print(find_best_chromosome(pop_name, generation))
-ch = Chromosome(parameters, str(find_best_chromosome(pop_name, generation)), True)
-#ch = Chromosome(parameters, 'ch18', True)
-ch.load_chromosome(os.path.join(pop_name, 'gen'+str(generation)))
-#ch.load_chromosome(os.path.join(pop_name, 'gen26'))
-ch.run_chromosome(True)
+if __name__ == "__main__":
+    parameters = Params()
+    generation = 1004
+    pop_name = 'prova5'
+    target = (2, 4)
 
+    ch = Chromosome(parameters, str(find_best_chromosome(pop_name, generation)), True)
 
+    ch.load_chromosome(os.path.join(pop_name, 'gen' + str(generation)))
+    ch.run_chromosome(True, target=target)
