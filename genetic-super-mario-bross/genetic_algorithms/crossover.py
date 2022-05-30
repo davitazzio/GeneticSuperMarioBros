@@ -1,3 +1,6 @@
+"""
+    @Chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+"""
 import numpy as np
 from typing import Tuple
 
