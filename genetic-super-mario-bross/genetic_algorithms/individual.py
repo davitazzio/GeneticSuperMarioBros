@@ -1,3 +1,6 @@
+"""
+    @Chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+"""
 from abc import abstractmethod
 
 
