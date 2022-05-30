@@ -1,5 +1,10 @@
-"""Static action sets for binary to discrete action space wrappers."""
+'''
+    Comment by Tazzioli Davide - davide.tazzioli@studio.unibo.it
+    coding of customized actions to be defined as a list of buttons.
+    The emulator can press buttons simultaneously only if specified in these lists.
+'''
 
+"""Static action sets for binary to discrete action space wrappers."""
 
 # actions for the simple run right environment
 RIGHT_ONLY = [
@@ -20,6 +25,16 @@ SIMPLE_MOVEMENT = [
     ['right', 'A', 'B'],
     ['A'],
     ['left'],
+]
+
+JOYPAD = [
+    ['up'],
+    ['down'],
+    ['left'],
+    ['right'],
+    ['A'],
+    ['B'],
+    ['NOOP']
 ]
 
 

@@ -1,5 +1,8 @@
+"""
+    @chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+"""
 from enum import Enum, unique
-
 
 @unique
 class RAMLocations(Enum):
@@ -14,6 +17,10 @@ class RAMLocations(Enum):
 
     Player_X_Postion_In_Level = 0x06D
     Player_X_Position_On_Screen = 0x086
+
+    Powerup_Drawn = 0x0014
+    Powerup_X_Position_On_Screen = 0x008C
+    Powerup_Y_Position_On_Screen = 0x00D4
 
     Player_X_Position_Screen_Offset = 0x3AD
     Player_Y_Position_Screen_Offset = 0x3B8
@@ -44,13 +51,11 @@ class EnemyType(Enum):
     Spiny_Egg = 0x12
     Fly_Cheep_Cheep = 0x14
     Bowser_Flame2 = 0x15
-
     # Generic_Enemy = 0xFF
 
     @classmethod
     def has_value(cls, value: int) -> bool:
         return value in set(item.value for item in cls)
-
 
 @unique
 class StaticType(Enum):
@@ -59,26 +64,33 @@ class StaticType(Enum):
     Ground = 0x54
     Top_Pipe1 = 0x12
     Top_Pipe2 = 0x13
+    Top_Pipe3 = 0x10
+    Top_Pipe4 = 0x11
     Bottom_Pipe1 = 0x14
     Bottom_Pipe2 = 0x15
     Flagpole_Top = 0x24
     Flagpole = 0x25
     Coin_Block1 = 0xC0
-    Coin_Block2 = 0xC1
+    #Coin_Block2 = 0xC4
     Coin = 0xC2
     Breakable_Block = 0x51
-
+    PowerUp_Block = 0xC1
+    Hidden_life = 0x60
+    Hit_animation_coinblock = 0x23
+    Hitted_coinblock = 0xC4
+    Hidden_Coin = 0x58
+    Hidden_Powerup = 0x57
+    PowerUp = -1
+    Static_Block = 0x61
     # Generic_Static_Tile = 0xFF
 
     @classmethod
     def has_value(cls, value: int) -> bool:
         return value in set(item.value for item in cls)
 
-
 @unique
 class DynamicType(Enum):
     Mario = 0xAA
-
     Static_Lift1 = 0x24
     Static_Lift2 = 0x25
     Vertical_Lift1 = 0x26
@@ -95,8 +107,7 @@ class DynamicType(Enum):
     Warpzone = 0x34
     Spring1 = 0x67
     Spring2 = 0x68
-    PowerUp = 0x0039
-
+    PowerUp = 0x7E020C #0x0039
     # Generic_Dynamic_Tile = 0xFF
 
     @classmethod

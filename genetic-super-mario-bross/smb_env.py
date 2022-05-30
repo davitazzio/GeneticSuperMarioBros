@@ -1,11 +1,18 @@
-"""An OpenAI Gym environment for Super Mario Bros. and Lost Levels."""
+"""
+    An OpenAI Gym environment for Super Mario Bros.
+    @Christian Kauten - https://github.com/Kautenja/gym-super-mario-bros
+    @Chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+
+"""
 from collections import defaultdict, namedtuple
-from enum import Enum, unique
+from enum import Enum
 from RAM_locations import StaticType, DynamicType, EnemyType, RAMLocations
 from nes_py import NESEnv
+
 import numpy as np
-from ._roms import decode_target
-from ._roms import rom_path
+from _roms.decode_target import decode_target
+from _roms.rom_path import rom_path
 
 # create a dictionary mapping value of status register to string names
 _STATUS_MAP = defaultdict(lambda: 'fireball', {0: 'small', 1: 'tall'})
@@ -18,8 +25,6 @@ _ENEMY_TYPE_ADDRESSES = [0x0016, 0x0017, 0x0018, 0x0019, 0x001A]
 
 # enemies whose context indicate that a stage change will occur (opposed to an
 # enemy that implies a stage change wont occur -- i.e., a vine)
-# Bowser = 0x2D
-# Flagpole = 0x31
 _STAGE_OVER_ENEMIES = np.array([0x2D, 0x31])
 Shape = namedtuple('Shape', ['width', 'height'])
 Point = namedtuple('Point', ['x', 'y'])
@@ -34,7 +39,6 @@ class Tile(object):
 
 class Enemy(object):
     def __init__(self, enemy_id: int, location: Point, tile_location: Point):
-        enemy_type = EnemyType(enemy_id)
         self.type = EnemyType(enemy_id)
         self.location = location
         self.tile_location = tile_location
@@ -58,7 +62,6 @@ def get_tile(x, y, ram, group_non_zero_tiles=False):
 
 class SuperMarioBrosEnv(NESEnv):
     """An environment for playing Super Mario Bros with OpenAI Gym."""
-
     # the legal range of rewards for each step
     reward_range = (-15, 15)
 
@@ -110,23 +113,26 @@ class SuperMarioBrosEnv(NESEnv):
         self._backup()
 
     def get_enemy_locations(self):
-        # We only care about enemies that are drawn. Others may?? exist
+        '''
+            @Chrispresso -
+        '''
+        # We only care about enemies that are drawn. Others may exist
         # in memory, but if they aren't on the screen, they can't hurt us.
         # enemies = [None for _ in range(self.MAX_NUM_ENEMIES)]
         enemies = []
 
         for enemy_num in range(self.MAX_NUM_ENEMIES):
-            enemy = ram[self.RAMLocations.Enemy_Drawn.value + enemy_num]
+            enemy = self.ram[RAMLocations.Enemy_Drawn.value + enemy_num]
             # Is there an enemy? 1/0
             if enemy:
                 # Get the enemy X location.
-                x_pos_level = self.ram[self.RAMLocations.Enemy_X_Position_In_Level.value + enemy_num]
-                x_pos_screen = self.ram[self.RAMLocations.Enemy_X_Position_On_Screen.value + enemy_num]
+                x_pos_level = self.ram[RAMLocations.Enemy_X_Position_In_Level.value + enemy_num]
+                x_pos_screen = self.ram[RAMLocations.Enemy_X_Position_On_Screen.value + enemy_num]
                 enemy_loc_x = (x_pos_level * 0x100) + x_pos_screen  # - ram[0x71c]
                 # print(ram[0x71c])
                 # enemy_loc_x = ram[self.RAMLocations.Enemy_X_Position_Screen_Offset.value + enemy_num]
                 # Get the enemy Y location.
-                enemy_loc_y = self.ram[self.RAMLocations.Enemy_Y_Position_On_Screen.value + enemy_num]
+                enemy_loc_y = self.ram[RAMLocations.Enemy_Y_Position_On_Screen.value + enemy_num]
                 # Set location
                 location = Point(enemy_loc_x, enemy_loc_y)
                 ybin = np.digitize(enemy_loc_y, self.ybins)
@@ -134,7 +140,7 @@ class SuperMarioBrosEnv(NESEnv):
                 tile_location = Point(xbin, ybin)
 
                 # Grab the id
-                enemy_id = self.ram[self.RAMLocations.Enemy_Type.value + enemy_num]
+                enemy_id = self.ram[RAMLocations.Enemy_Type.value + enemy_num]
                 # Create enemy-
                 e = Enemy(enemy_id, location, tile_location)
 
@@ -142,10 +148,27 @@ class SuperMarioBrosEnv(NESEnv):
 
         return enemies
 
+    def get_powerup_locations(self):
+        '''
+        @Tazzioli Davide
+        '''
+        tile_location = None
+        powerup = self.ram[RAMLocations.Powerup_Drawn.value]
+
+        if powerup:
+            x_pos_screen = self.ram[RAMLocations.Powerup_X_Position_On_Screen.value]
+            y_pos_screen = self.ram[RAMLocations.Powerup_Y_Position_On_Screen.value]
+
+            ybin = np.digitize(y_pos_screen, self.ybins)
+            xbin = np.digitize(x_pos_screen, self.xbins)
+            tile_location = Point(xbin, ybin)
+
+        return tile_location
+
     def get_mario_location_in_level(self) -> Point:
-        mario_x = self.ram[self.RAMLocations.Player_X_Postion_In_Level.value] * 256 + self.ram[
-            self.RAMLocations.Player_X_Position_On_Screen.value]
-        mario_y = self.ram[self.RAMLocations.Player_Y_Position_Screen_Offset.value]
+        mario_x = self.ram[RAMLocations.Player_X_Postion_In_Level.value] * 256 + self.ram[
+            RAMLocations.Player_X_Position_On_Screen.value]
+        mario_y = self.ram[RAMLocations.Player_Y_Position_Screen_Offset.value]
         return Point(mario_x, mario_y)
 
     def get_mario_score(self) -> int:
@@ -158,9 +181,9 @@ class SuperMarioBrosEnv(NESEnv):
         return score
 
     def get_mario_location_on_screen(self):
-        mario_x = self.ram[self.RAMLocations.Player_X_Position_Screen_Offset.value]
-        mario_y = self.ram[self.RAMLocations.Player_Y_Pos_On_Screen.value] * self.ram[
-            self.RAMLocations.Player_Vertical_Screen_Position.value] + self.sprite.height
+        mario_x = self.ram[RAMLocations.Player_X_Position_Screen_Offset.value]
+        mario_y = self.ram[RAMLocations.Player_Y_Pos_On_Screen.value] * self.ram[
+            RAMLocations.Player_Vertical_Screen_Position.value] + self.sprite.height
         return Point(mario_x, mario_y)
 
     def get_tile_type(self, delta_x: int, delta_y: int, mario: Point):
@@ -188,18 +211,14 @@ class SuperMarioBrosEnv(NESEnv):
         tiles = {}
         row = 0
         col = 0
-
+        self.get_powerup_locations()
         mario_level = self.get_mario_location_in_level()
         mario_screen = self.get_mario_location_on_screen()
-
         x_start = mario_level.x - mario_screen.x
-
         enemies = self.get_enemy_locations()
         y_start = 0
         mx, my = self.get_mario_location_in_level()
         my += 16
-        # Set mx to be within the screen offset
-        mx = self.ram[self.RAMLocations.Player_X_Position_Screen_Offset.value]
 
         for y_pos in range(y_start, 240, 16):
             for x_pos in range(x_start, x_start + 256, 16):
@@ -209,32 +228,34 @@ class SuperMarioBrosEnv(NESEnv):
                 page = (x // 256) % 2
                 sub_x = (x % 256) // 16
                 sub_y = (y - 32) // 16
-                addr = 0x500 + page * 208 + sub_y * 16 + sub_x
+                #addr = 0x500 + page * 208 + sub_y * 16 + sub_x
 
-                # PPU is there, so no tile is there
+                # row 0 and 1: game information -> irrelevant
                 if row < 2:
                     tiles[loc] = StaticType.Empty
+                elif StaticType.has_value(tile):
+                    tiles[loc] = StaticType(tile)
                 else:
-                    try:
-                        tiles[loc] = StaticType(tile)
-                    except:
-                        pass
-                    try:
-                        tiles[loc] = DynamicType(tile)
-                    except:
-                        pass
-                    for enemy in enemies:
-                        ex = enemy.location.x
-                        ey = enemy.location.y + 8
-                        # Since we can only discriminate within 8 pixels, if it falls within this bound, count it as there
-                        if abs(x_pos - ex) <= 8 and abs(y_pos - ey) <= 8:
-                            tiles[loc] = enemy.type
+                    # unrecognized tile -> became Ground
+                    tiles[loc] = StaticType.Ground
+
+                    # TODO check what happen with dynamic tiles (all unrecognized)
+
+                for enemy in enemies:
+                    ex = enemy.location.x
+                    ey = enemy.location.y + 8
+                    # Since we can only discriminate within 8 pixels, if it falls within this bound, count it as there
+                    if abs(x_pos - ex) <= 8 and abs(y_pos - ey) <= 8:
+                        tiles[loc] = enemy.type
                 # Next col
                 col += 1
             # Move to next row
             col = 0
             row += 1
-
+        # Place marker for powerup
+        powerup = self.get_powerup_locations()
+        if powerup is not None:
+            tiles[powerup] = StaticType.PowerUp
         # Place marker for mario
         mario_row, mario_col = self.get_mario_row_col()
         loc = (mario_row, mario_col)
@@ -245,11 +266,31 @@ class SuperMarioBrosEnv(NESEnv):
     def get_mario_row_col(self):
         x, y = self.get_mario_location_on_screen()
         # Adjust 16 for PPU
-        y = self.ram[self.RAMLocations.Player_Y_Position_Screen_Offset.value] + 16
+        y = self.ram[RAMLocations.Player_Y_Position_Screen_Offset.value] + 16
         x += 12
         col = x // 16
         row = (y - 0) // 16
         return row, col
+
+    def _get_info(self):
+        """Return the info after a step occurs"""
+        return dict(
+            coins=self._coins,
+            flag_get=self._flag_get,
+            life=self._life,
+            score=self._score,
+            stage=self._stage,
+            status=self._player_status,
+            time=self._time,
+            world=self._world,
+            x_pos=self._x_position,
+            y_pos=self._y_position,
+            tiles=self.get_tiles,
+            mario_location=self.get_mario_row_col(),
+            is_dead=self._is_dying
+        )
+
+    # Utility functions by @Christian Kauten - https://github.com/Kautenja/gym-super-mario-bros
 
     @property
     def is_single_stage_env(self):
@@ -457,7 +498,7 @@ class SuperMarioBrosEnv(NESEnv):
     def _skip_change_area(self):
         """Skip change area animations by by running down timers."""
         change_area_timer = self.ram[0x06DE]
-        if change_area_timer > 1 and change_area_timer < 255:
+        if 1 < change_area_timer < 255:
             self.ram[0x06DE] = 1
 
     def _skip_occupied_states(self):
@@ -588,24 +629,6 @@ class SuperMarioBrosEnv(NESEnv):
         if self.is_single_stage_env:
             return self._is_dying or self._is_dead or self._flag_get
         return self._is_game_over
-
-    def _get_info(self):
-        """Return the info after a step occurs"""
-        return dict(
-            coins=self._coins,
-            flag_get=self._flag_get,
-            life=self._life,
-            score=self._score,
-            stage=self._stage,
-            status=self._player_status,
-            time=self._time,
-            world=self._world,
-            x_pos=self._x_position,
-            y_pos=self._y_position,
-            tiles=self.get_tiles,
-            mario_location=self.get_mario_row_col()
-        )
-
 
 # explicitly define the outward facing API of this module
 __all__ = [SuperMarioBrosEnv.__name__]
