@@ -1,6 +1,14 @@
+'''
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+    @Chrispresso - https://github.com/Chrispresso/SuperMarioBros-AI
+'''
+
 import json
 import os
 import random
+import threading
+import time
+from queue import Queue
 
 import numpy as np
 from typing import List, Tuple
@@ -33,6 +41,22 @@ class Population(object):
         self.name = name
         if init:
             self.init_uniform()
+
+    def run_population(self):
+        start_time = time.time()
+        q = Queue()
+        for ch in self.chromosomes:
+            ch.set_queue(q)
+            t = threading.Thread(target=ch.run_chromosome())
+            t.start()
+
+        for i in range(0, len(self.chromosomes)):
+            q.get()
+            # print('get ', i)
+
+        print("Finished...")
+        time_of_execution = time.time() - start_time
+        self.save_generation(time_of_execution)
 
     def get_num_individuals(self) -> int:
         """
@@ -127,7 +151,6 @@ class Population(object):
                         ch.set_reward(13)
                         break
 
-
     def save_generation(self, time_of_execution: float = None) -> None:
         """
         Save the actual chromosomes of the population at the current generation, with their stats
@@ -155,7 +178,7 @@ class Population(object):
     def load_generation(self, generation: int, evolve: bool = True) -> None:
         """
         Load an old version of the population with the same name
-        :param evolve:
+        :param evolve: bool :automatically evolves the loaded population
         :param generation: int
         :return: none
         """
@@ -173,6 +196,7 @@ class Population(object):
         # np.save(os.path.join(population_folder, 'stats'), self.calc_stats())
 
     def load_stats(self, path_to_stats: str):
+        # TODO: not implemented
         pass
 
     def evolve(self) -> None:
@@ -213,7 +237,6 @@ class Population(object):
             bias2 = p2.get_bias()
 
             # Each W_l and b_l are treated as their own chromosome.
-            # Because of this I need to perform crossover/mutation on each chromosome between parents
             c1 = Chromosome(self.parameters, 'mutated', False)
             c2 = Chromosome(self.parameters, 'mutated', False)
             for l in range(1, L):
@@ -223,11 +246,11 @@ class Population(object):
                 p2_b_l = bias2[l]
 
                 # Crossover
-                # @NOTE: I am choosing to perform the same type of crossover on the weights and the bias.
+                # @NOTE: same type of crossover on the weights and the bias.
                 c1_W_l, c2_W_l, c1_b_l, c2_b_l = _crossover(self.parameters, p1_W_l, p2_W_l, p1_b_l, p2_b_l)
 
                 # Mutation
-                # @NOTE: I am choosing to perform the same type of mutation on the weights and the bias.
+                # @NOTE: same type of mutation on the weights and the bias.
                 _mutation(self.parameters, c1_W_l, c2_W_l, c1_b_l, c2_b_l)
 
                 c1.set_weight(np.clip(c1_W_l, -1, 1), l)
@@ -242,7 +265,7 @@ class Population(object):
         self._rename_chromosomes()
         for ch in self.chromosomes:
             ch.decrease_reward()
-        print("population evolved to genertion ", self.generation)
+        print("Population evolved to generation ", self.generation)
 
 
 def _crossover(par: Params, parent1_weights: np.ndarray, parent2_weights: np.ndarray,
