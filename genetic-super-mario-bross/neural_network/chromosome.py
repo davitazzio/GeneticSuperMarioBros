@@ -1,10 +1,13 @@
+"""
+    @Tazzioli Davide - davide.tazzioli@studio.unibo.it
+    An individual of the population. More proper name: individual
+"""
 import json
 import os
 from queue import Queue
-from typing import List
 
 import numpy as np
-from game3 import Game
+from game import Game
 from .my_nn import SuperMarioNeuralNetwork
 
 
@@ -12,9 +15,9 @@ class Chromosome:
     def __init__(self, par, ch_name: str, init: bool = False):
         """
 
-        :param network_architecture: List[int]: dimension of each layer
-        :param ch_name: name of the individual
-        :param init: if True, initialize the individual to random values
+        :param par: Parameters: parameters
+        :param ch_name: str: chromosome name
+        :param init: bool
         """
         self.parameters = par
         network_architecture = self.parameters.get_network_architecture()
@@ -36,10 +39,6 @@ class Chromosome:
 
         if init:
             self.init_uniform()
-
-    def decrease_reward(self):
-        if self.reward > 0:
-            self.reward -= 1
 
     def set_reward(self, reward):
         self.reward == reward
@@ -124,7 +123,7 @@ class Chromosome:
         :param round_name: str: name of the individual
         :return: None
         """
-        # Make population folder if it doesnt exist
+        # Make population folder if it doesn't exist
         if round_name is None:
             round_name = self.name
         if not os.path.exists(population_folder):
@@ -179,9 +178,10 @@ class Chromosome:
     def get_fitness(self):
         return self.fitness
 
-    def run_chromosome(self, render: bool = False):
+    def run_chromosome(self, render: bool = False, target=(1, 1)):
         """
 
+        :param target:
         :param render: bool: render the game
         :return: None
         """
@@ -189,7 +189,7 @@ class Chromosome:
         if not self.runned:
             nn = SuperMarioNeuralNetwork(self.input_size, self.hidden_layer_size, self.output_size)
             nn.set_params(self)
-            game = Game(self.parameters, nn, render)
+            game = Game(self.parameters, nn, render, target)
             self.fitness, self.best_pos, self.best_status, self.score = game.start_game()
         self.runned = True
         self.queue.put(0)
